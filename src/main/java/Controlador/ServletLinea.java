@@ -53,7 +53,7 @@ public class ServletLinea extends HttpServlet {
 			x= linDAO.insertarlinea(linDTO);
 			
 			if (x == true) {
-				JOptionPane.showMessageDialog(null, "Registro Correctamente");
+				//JOptionPane.showMessageDialog(null, "Registro Correctamente");
 				response.sendRedirect("index.jsp");				
 			}
 			else {
