@@ -13,7 +13,7 @@ public Connection conexionbd() {
     try {
 		Class.forName("com.mysql.cj.jdbc.Driver");
 		cnn=DriverManager.getConnection("jdbc:mysql://localhost/bancos","root","root");
-	    //JOptionPane.showMessageDialog(null, "Conexion ok");
+	    //JOptionPane.showMessageDialog(null, "Conexion okdfsd");
     } catch (ClassNotFoundException e) {
 		// TODO Auto-generated catch block
 		e.printStackTrace();
