@@ -1,6 +1,6 @@
 # ANB Rising Stars Showcase — Plan de Pruebas de Carga y Análisis de Capacidad (JMeter)
 
-> **Versión:** 1.1 — 2025-09-08  
+> **Versión:** 1.0 — 2025-09-07  
 > **Proyecto:** ANB Rising Stars Showcase  
 > **Responsable:** Equipo QA/DevOps  
 > **Documento:** `plan_de_pruebas_jmeter.md`
@@ -16,7 +16,9 @@
 ---
 
 ## 2. Análisis de capacidad
-**Objetivo:** asegurar que la plataforma soporte: (a) **200–300 usuarios concurrentes** navegando y votando; (b) picos de **100 subidas concurrentes** con procesamiento asíncrono (transcoding 30 s, 720p, 16:9, sin audio y marca de agua).
+**Objetivo:** asegurar que la plataforma soporte: 
+- (a) **200–300 usuarios concurrentes** navegando y votando;
+- (b) picos de **100 subidas concurrentes** con procesamiento asíncrono (transcoding 30 s, 720p, 16:9, sin audio y marca de agua).
 
 **Mix horario pico (hipótesis inicial):**
 - 60% `GET /api/public/videos`
@@ -41,17 +43,16 @@
 ---
 
 ## 4. Respuestas a preguntas orientadoras
-- **Carga objetivo:** **200 CCU** sostenida, picos **300 CCU**; **100 uploads** concurrentes por ventanas.
+- **Carga objetivo:** **200 usuarios concurrentes** sostenida, picos **300 usuarios concurrentes**; **100 uploads** concurrentes por ventanas.
 - **Cuello de botella:** *workers* de vídeo y **DB** (unicidad de voto); ranking sin caché.
 - **Estrategia de escalado:** **API/workers** horizontales; **DB** con índices y *pool*; *broker tuning* (prefetch, ack).
-- **Degradación aceptable:** `p95 < 500 ms` a 200 CCU; `p95 < 900 ms` a 300 CCU; *upload* (ingestión) `p95 < 1.2 s`.
+- **Degradación aceptable:** `p95 < 500 ms` a 200 usuarios concurrentes; `p95 < 900 ms` a 300 usuarios concurrentes; *upload* (ingestión) `p95 < 1.2 s`.
 - **Controles:** idempotencia de voto, *rate limiting*, caché de `rankings` (TTL 1–5 min), **DLQ** y *backoff* en *workers*.
 
 ---
 
 ## 5. Consideraciones importantes
 - **Voto único** por usuario/video con índice único en DB e idempotencia en el endpoint.
-- **Caché/Vista materializada** de ranking (por ciudad) para evitar consultas costosas.
 - **Uploads** directos a almacenamiento (signed URLs) y validación de tipo/tamaño.
 - **Concurrencia de workers** fijada a núcleos/CPU disponibles; colas separadas para *upload* y *transcoding*.
 - **Observabilidad** desde el día 1 (métricas, logs y trazas).
@@ -64,7 +65,7 @@
 **Plan de prueba (alto nivel):**
 - **Thread Groups**:  
   - **TG-Interactivo**: login → listar → votar×3 → ranking (con *think time* 1–3 s).  
-  - **TG-Upload**: login → upload multipart (30–100 MB) → *polling* opcional de estado.
+  - **TG-Upload**: login → upload multipart (30–100 MB).
 - **Config Elements**: HTTP Defaults, Cookie/Header Managers, `CSV Data Set Config`, `User Parameters` (JWT).  
 - **Post-Processors**: `JSON Extractor` (token), `Regex/JSON Extractor` (video_id).  
 - **Timers**: `Uniform Random Timer` (1–3 s) para el escenario interactivo.  
@@ -76,7 +77,7 @@
 - **JVM**: `HEAP=-Xms1g -Xmx4g`, `-XX:+UseG1GC`.  
 - **Disco (EBS gp3)**: **30 GB** (resultados CSV/HTML, artefactos de vídeo sintético y logs).  
 - **SO**: `ulimit -n >= 65535`, *sysctl* TCP, swap deshabilitada si es viable.
-- **Alternativa costo/beneficio** (si 200 CCU máx. y 50 uploads): **m6i.large** (2 vCPU, 8 GB, 10 Gbps).
+- **Alternativa costo/beneficio** (si 200 usuarios concurrentes máx. y 50 uploads): **m6i.large** (2 vCPU, 8 GB, 10 Gbps).
 
 ---
 
@@ -90,10 +91,10 @@
 
 ## 8. Criterios de aceptación (ANB)
 - `POST /api/public/videos/{{id}}/vote` → **p95 < 300 ms**, error < 0.1%.  
-- `GET /api/public/videos` → **p95 < 350 ms** a 300 CCU.  
-- `GET /api/public/rankings` → **p95 < 400 ms** con caché.  
+- `GET /api/public/videos` → **p95 < 350 ms** a 300 usuarios concurrentes.  
+- `GET /api/public/rankings` → **p95 < 400 ms**.  
 - `POST /api/videos/upload` → **≥ 50 req/min** sostenidos; **p95 < 1.2 s** (ingestión).  
-- **Servidor app CPU** < 80% a 200 CCU; **workers** con *transcoding* medio ≤ 30 s/clip (720p/30s).  
+- **Servidor app CPU** < 80% a 200 usuarios concurrentes; **workers** con *transcoding* medio ≤ 30 s/clip (720p/30s).  
 - **Integridad de voto único**: 0 violaciones en campañas masivas.
 
 ---
@@ -137,9 +138,9 @@ flowchart TD
 ## 10. Estrategia y configuración de pruebas
 **Etapas:**  
 1) **Humo** (5–10 usuarios, 5 min).  
-2) **Carga progresiva**: 10 → 50 → 100 → 200 → 300 CCU (10–15 min por escalón).  
+2) **Carga progresiva**: 10 → 50 → 100 → 200 → 300 usuarios concurrentes (10–15 min por escalón).  
 3) **Estrés**: subir hasta p95 > 1 s o error > 1%.  
-4) **Soak**: 60–120 min a 200 CCU (filtrar *warm-up* en análisis).
+4) **Soak**: 60–120 min a 200 usuarios concurrentes (filtrar *warm-up* en análisis).
 
 **Configuración JMeter:** non-GUI; `HEAP 1–4 GB`; sin listeners en vivo; `Simple Data Writer` a CSV; **Dashboard HTML** al final; `CSV Data Set` para credenciales/IDs; `Throughput Controller` si se ejecutan TG combinados; `Backend Listener` opcional.
 
@@ -151,17 +152,17 @@ flowchart TD
 
 | Escenario | Objetivo | Resultado esperado |
 |---|---|---|
-| Interactivo/Web | Latencia y unicidad de voto con 200–300 CCU | p95: login < 250 ms; listar < 350 ms; voto < 300 ms; ranking < 400 ms; errores < 0.1% |
+| Interactivo/Web | Latencia y unicidad de voto con 200–300 usuarios concurrentes | p95: login < 250 ms; listar < 350 ms; voto < 300 ms; ranking < 400 ms; errores < 0.1% |
 | Carga/Asíncrono | Sostenibilidad de *upload* + pipeline | ≥ 50 req/min en upload; éxito ≥ 99.5%; *transcoding* medio ≤ 30 s/job (4 workers) |
 
 ---
 
 ## 12. Gráficos simulados
 **Throughput vs. Usuarios**  
-![Throughput vs Usuarios](/mnt/data/jmeter_throughput_vs_users.png)
+![Throughput vs Usuarios](jmeter_throughput_vs_users.png)
 
 **Tiempo de Respuesta p95 vs. Carga**  
-![p95 vs Carga](/mnt/data/jmeter_tiempo_respuesta_vs_carga.png)
+![p95 vs Carga](jmeter_tiempo_respuesta_vs_carga.png)
 
 ---
 
