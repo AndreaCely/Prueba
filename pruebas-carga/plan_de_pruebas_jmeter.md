@@ -106,11 +106,11 @@
 
 ```mermaid
 flowchart TD
-  A[POST /api/auth/login] --> B[GET /api/public/videos]
-  B --> C[POST /api/public/videos/{{id}}/vote (1)] 
-  C --> D[POST /api/public/videos/{{id}}/vote (2)]
-  D --> E[POST /api/public/videos/{{id}}/vote (3)]
-  E --> F[GET /api/public/rankings?city=...]
+  A["POST /api/auth/login"] --> B["GET /api/public/videos"]
+  B --> C["POST /api/public/videos/:id/vote (1)"] 
+  C --> D["POST /api/public/videos/:id/vote (2)"]
+  D --> E["POST /api/public/videos/:id/vote (3)"]
+  E --> F["GET /api/public/rankings?city=..."]
 ```
 
 **Validaciones:** 2xx, unicidad de voto (409/422 si reintento), p95 por paso, *think time* 1–3 s.
@@ -123,10 +123,10 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  A[Login jugador] --> B[POST /api/videos/upload (multipart 30–100 MB)]
-  B --> C[Broker encola tarea]
-  C --> D[Worker ffmpeg procesa 720p/30s + watermark]
-  D --> E[GET /api/videos/{{video_id}} status=processed]
+  A["POST /api/auth/login (jugador)"] --> B["POST /api/videos/upload (multipart 30-100 MB)"]
+  B --> C["Broker encola tarea"]
+  C --> D["Worker ffmpeg procesa 720p/30s + watermark"]
+  D --> E["GET /api/videos/:video_id (status = processed)"]
 ```
 
 **Carga:** 100 jugadores subiendo en paralelo (en lotes).  
