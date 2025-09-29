@@ -1,24 +1,24 @@
-# ANB Rising Stars Showcase — Plan de Pruebas de Carga y Análisis de Capacidad (JMeter)
+# Sistema-de-Videos-y-Ranking — Plan de Pruebas de Carga y Análisis de Capacidad (JMeter)
 
 > **Versión:** 1.0 — 2025-09-07  
-> **Proyecto:** ANB Rising Stars Showcase  
+> **Proyecto:** Sistema-de-Videos-y-Ranking 
 > **Responsable:** Equipo QA/DevOps  
-> **Documento:** `plan_de_pruebas_jmeter.md`
+> **Documento:** `plan_de_pruebas.md`
 
 ---
 
 ## 1. Lugar y formato de entrega
 - **Repositorio:** `./capacity-planning/plan_de_pruebas.md`  
-- **Recursos de prueba:** `./jmeter/` (plan `.jmx`, CSVs de datos, scripts `run.sh`)  
-- **Evidencias:** `./results/{{fecha}}/{{escenario}}/` (Dashboard HTML, CSV, logs)  
+- **Recursos de prueba:** `./jmeter/` (plan `.jmx`, CSVs de datos)  
+- **Evidencias:** `./results/{{escenario}}/` ( CSV, logs)  
 - **Notas:** ejecutar JMeter en **modo non-GUI**; documentar comandos y parámetros.
 
 ---
 
 ## 2. Análisis de capacidad
 **Objetivo:** asegurar que la plataforma soporte: 
-- (a) **200–300 usuarios concurrentes** navegando y votando;
-- (b) picos de **100 subidas concurrentes** con procesamiento asíncrono (transcoding 30 s, 720p, 16:9, sin audio y marca de agua).
+- (a) **50 usuarios concurrentes** navegando y votando;
+- (b) picos de **10 subidas concurrentes** con procesamiento asíncrono (transcoding 30 s, 720p, 16:9, sin audio y marca de agua).
 
 **Mix horario pico (hipótesis inicial):**
 - 60% `GET /api/public/videos`
@@ -43,10 +43,10 @@
 ---
 
 ## 4. Respuestas a preguntas orientadoras
-- **Carga objetivo:** **200 usuarios concurrentes** sostenida, picos **300 usuarios concurrentes**; **100 uploads** concurrentes por ventanas.
+- **Carga objetivo:** **50 usuarios concurrentes** sostenida; **10 uploads** concurrentes por ventanas.
 - **Cuello de botella:** *workers* de vídeo y **DB** (unicidad de voto); ranking sin caché.
 - **Estrategia de escalado:** **API/workers** horizontales; **DB** con índices y *pool*; *broker tuning* (prefetch, ack).
-- **Degradación aceptable:** `p95 < 500 ms` a 200 usuarios concurrentes; `p95 < 900 ms` a 300 usuarios concurrentes; *upload* (ingestión) `p95 < 1.2 s`.
+- **Degradación aceptable:** `p95 < 500 ms` a 50 usuarios concurrentes; `p95 < 900 ms` a 10 usuarios concurrentes; *upload* (ingestión) `p95 < 1.2 s`.
 - **Controles:** idempotencia de voto, *rate limiting*, caché de `rankings` (TTL 1–5 min), **DLQ** y *backoff* en *workers*.
 
 ---
@@ -136,15 +136,17 @@ flowchart TD
 ---
 
 ## 10. Estrategia y configuración de pruebas
-**Etapas:**  
-1) **Humo** (5–10 usuarios, 5 min).  
-2) **Carga progresiva**: 10 → 50 → 100 → 200 → 300 usuarios concurrentes (10–15 min por escalón).  
+**Etapas TG-Interactivo:**  
+1) **Humo** (1 usuario, 1 min).  
+2) **Carga progresiva**: 10 → 50 → 10 usuarios concurrentes (1 - 2 min por escalón).  
+3) **Estrés**: subir hasta p95 > 1 s o error > 1%.
+
+**Etapas TG-Upload:**  
+1) **Humo** (1 usuario, 1 min).  
+2) **Carga progresiva**: 2 → 4 → 6 → 10 → 6 → 4 → 2 6usuarios concurrentes (1 - 2 min por escalón).  
 3) **Estrés**: subir hasta p95 > 1 s o error > 1%.  
-4) **Soak**: 60–120 min a 200 usuarios concurrentes (filtrar *warm-up* en análisis).
 
 **Configuración JMeter:** non-GUI; `HEAP 1–4 GB`; sin listeners en vivo; `Simple Data Writer` a CSV; **Dashboard HTML** al final; `CSV Data Set` para credenciales/IDs; `Throughput Controller` si se ejecutan TG combinados; `Backend Listener` opcional.
-
-**Monitoreo y profiling:** Grafana/Prometheus (node_exporter, postgres_exporter, redis_exporter, cadvisor), logs centralizados (Loki/ELK), pprof/APM si está disponible.
 
 ---
 
@@ -152,7 +154,7 @@ flowchart TD
 
 | Escenario | Objetivo | Resultado esperado |
 |---|---|---|
-| Interactivo/Web | Latencia y unicidad de voto con 200–300 usuarios concurrentes | p95: login < 250 ms; listar < 350 ms; voto < 300 ms; ranking < 400 ms; errores < 0.1% |
+| Interactivo/Web | Latencia y unicidad de voto con 50 usuarios concurrentes | p95: login < 250 ms; listar < 350 ms; voto < 300 ms; ranking < 400 ms; errores < 0.1% |
 | Carga/Asíncrono | Sostenibilidad de *upload* + pipeline | ≥ 50 req/min en upload; éxito ≥ 99.5%; *transcoding* medio ≤ 30 s/job (4 workers) |
 
 ---
