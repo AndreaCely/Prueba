@@ -31,36 +31,63 @@
 ---
 
 ## 3. Definición de métricas
-**Capacidad de procesamiento**
-- *Throughput* por endpoint (req/min) y *jobs/min* en *workers*.
-
-**Tiempos de respuesta**
-- Percentiles **p50/p90/p95/p99** por endpoint (foco en **p95**).
-
-**Utilización y salud**
-- CPU/RAM por servicio (API, DB, broker, workers), I/O disco/red, errores 4xx/5xx, *timeouts*, *retry/DLQ*, tamaño/edad de cola.
+- **TG-Interactivo:** foco en **p95** por endpoint; objetivo inicial ≤ 1000 ms.
+- **TG-Upload (ingestión multipart):** objetivo inicial **p95 ≤ 5 s**.
+- **Tasa de éxito:** ≥ 95% por paso en ventanas de 10 s.
+- **RPS / Concurrencia:** escalar por etapas manteniendo estabilidad (sin queues crecientes ni spikes de p95).
 
 ---
 
-## 4. Respuestas a preguntas orientadoras
-- **Carga objetivo:** **50 usuarios concurrentes** sostenida; **10 uploads** concurrentes por ventanas.
-- **Cuello de botella:** *workers* de vídeo y **DB** (unicidad de voto); ranking sin caché.
-- **Estrategia de escalado:** **API/workers** horizontales; **DB** con índices y *pool*; *broker tuning* (prefetch, ack).
-- **Degradación aceptable:** `p95 < 500 ms` a 50 usuarios concurrentes; `p95 < 900 ms` a 10 usuarios concurrentes; *upload* (ingestión) `p95 < 1.2 s`.
-- **Controles:** idempotencia de voto, *rate limiting*, caché de `rankings` (TTL 1–5 min), **DLQ** y *backoff* en *workers*.
+## 4. Escenarios (etapas y duraciones)
+### 4.1 TG‑Interactivo (login → listar → votar×3 → ranking)
+**Inicio en reposo:**
+- **Tasa:** rate(0/sec)
+- **Duración:** random_arrivals(10 sec)
+- **Objetivo:** establecer un punto de partida sin carga.
+
+**Incremento gradual de carga:**
+- **Subida** a rate(2/sec) durante random_arrivals(2 min)
+- **Luego** a rate(4/sec) durante random_arrivals(1 min)
+- **Posteriormente** a rate(6/sec) durante random_arrivals(1 min)
+- **Finalmente** a rate(10/sec) durante random_arrivals(1 min)
+
+**Descenso gradual de carga:**
+- **Reducción** a rate(6/sec) durante random_arrivals(1 min)
+- **Luego** a rate(4/sec) durante random_arrivals(1 min)
+- **Finalmente** a rate(2/sec) durante random_arrivals(2 min)
+
+### 4.2 TG‑Upload (login → upload multipart 30–100 MB)
+
+**Inicio sin carga**
+- **Tasa:** rate(0/sec)
+- **Duración:** random_arrivals(10 sec)
+- **Propósito:** establecer un estado base sin solicitudes.
+
+**Incremento**
+- **Transición** a rate(10/sec) durante random_arrivals(1 min)
+- **Breve estabilización:** random_arrivals(10 sec)
+- **Pico de carga:** rate(50/sec) durante random_arrivals(2 min)
+- **Este tramo representa el momento de mayor estrés para el sistema.
+
+**Reducción rápida de carga**
+- **Transición:** random_arrivals(10 sec)
+- **Descenso** a rate(10/sec) durante random_arrivals(1 min)
+- **Permite** observar la capacidad de recuperación del sistema tras el pico.
 
 ---
 
-## 5. Consideraciones importantes
-- **Voto único** por usuario/video con índice único en DB e idempotencia en el endpoint.
-- **Uploads** directos a almacenamiento (signed URLs) y validación de tipo/tamaño.
-- **Concurrencia de workers** fijada a núcleos/CPU disponibles; colas separadas para *upload* y *transcoding*.
-- **Observabilidad** desde el día 1 (métricas, logs y trazas).
+## 5. Entorno e infraestructura
+- **Generador de carga (local):** i7‑12700H, 16 GB RAM, Windows 11 Pro 22H2.
+- **Topología de la solución (AWS):** Front (t3.small), Back (t3.small), Worker (t3.large), RabbitMQ (t3.small),
+  Redis‑EC2 (t3.small, sin IP pública), MinIO (t3.small), Bastion (t3.micro).
+- **Observación metodológica:** El uso de cliente local puede sesgar los resultados (CPU/IO/red del cliente).
+  Para pruebas de confirmación se recomienda un cliente dedicado EC2 (p. ej., c6i.xlarge).
 
 ---
+  
 
 ## 6. Herramienta y **infraestructura requerida** (AWS Academy — Learner Lab)
-**Herramienta:** **Apache JMeter 5.6.x** en **modo non-GUI**; Dashboard HTML.
+**Herramienta:** **Apache JMeter 5.6.3** en **modo non-GUI**
 
 **Plan de prueba (alto nivel):**
 - **Thread Groups**:  
@@ -69,33 +96,7 @@
 - **Config Elements**: HTTP Defaults, Cookie/Header Managers, `CSV Data Set Config`, `User Parameters` (JWT).  
 - **Post-Processors**: `JSON Extractor` (token), `Regex/JSON Extractor` (video_id).  
 - **Timers**: `Uniform Random Timer` (1–3 s) para el escenario interactivo.  
-- **Listeners**: `Simple Data Writer` (CSV) + **Dashboard HTML** al final.  
-- **Opcional**: `Backend Listener` hacia InfluxDB/Grafana.
-
-**Instancia EC2 recomendada (cliente de carga):** **c6i.xlarge** (4 vCPU, 8 GB RAM, red 10 Gbps).  
-- **Motivos**: hasta ~500–800 hilos ligeros con *think time*; margen para TLS/JSON; ancho de banda suficiente para 100 uploads concurrentes.  
-- **JVM**: `HEAP=-Xms1g -Xmx4g`, `-XX:+UseG1GC`.  
-- **Disco (EBS gp3)**: **30 GB** (resultados CSV/HTML, artefactos de vídeo sintético y logs).  
-- **SO**: `ulimit -n >= 65535`, *sysctl* TCP, swap deshabilitada si es viable.
-- **Alternativa costo/beneficio** (si 200 usuarios concurrentes máx. y 50 uploads): **m6i.large** (2 vCPU, 8 GB, 10 Gbps).
-
----
-
-## 7. Entorno de pruebas y topología
-- **Cliente de carga (EC2 Learner Lab)**: JMeter non-GUI dedicado.  
-- **Servidor de aplicación**: API + Nginx + DB + broker + workers (entorno de pruebas).  
-- **Red**: dentro de la misma región/zona para latencias < 2–3 ms; vigilar *throughput* en uploads.  
-- **Tiempo**: NTP habilitado para correlación de métricas.
-
----
-
-## 8. Criterios de aceptación (ANB)
-- `POST /api/public/videos/{{id}}/vote` → **p95 < 300 ms**, error < 0.1%.  
-- `GET /api/public/videos` → **p95 < 350 ms** a 300 usuarios concurrentes.  
-- `GET /api/public/rankings` → **p95 < 400 ms**.  
-- `POST /api/videos/upload` → **≥ 50 req/min** sostenidos; **p95 < 1.2 s** (ingestión).  
-- **Servidor app CPU** < 80% a 200 usuarios concurrentes; **workers** con *transcoding* medio ≤ 30 s/clip (720p/30s).  
-- **Integridad de voto único**: 0 violaciones en campañas masivas.
+- **Listeners**: `Simple Data Writer` (CSV).  
 
 ---
 
@@ -146,16 +147,14 @@ flowchart TD
 2) **Carga progresiva**: 2 → 4 → 6 → 10 → 6 → 4 → 2 6usuarios concurrentes (1 - 2 min por escalón).  
 3) **Estrés**: subir hasta p95 > 1 s o error > 1%.  
 
-**Configuración JMeter:** non-GUI; `HEAP 1–4 GB`; sin listeners en vivo; `Simple Data Writer` a CSV; **Dashboard HTML** al final; `CSV Data Set` para credenciales/IDs; `Throughput Controller` si se ejecutan TG combinados; `Backend Listener` opcional.
-
 ---
 
 ## 11. Tabla resumen (escenarios & resultados esperados)
 
 | Escenario | Objetivo | Resultado esperado |
 |---|---|---|
-| Interactivo/Web | Latencia y unicidad de voto con 50 usuarios concurrentes | p95: login < 250 ms; listar < 350 ms; voto < 300 ms; ranking < 400 ms; errores < 0.1% |
-| Carga/Asíncrono | Sostenibilidad de *upload* + pipeline | ≥ 50 req/min en upload; éxito ≥ 99.5%; *transcoding* medio ≤ 30 s/job (4 workers) |
+| Interactivo/Web | Latencia y unicidad de voto con 50 usuarios concurrentes | p95: login < 300 ms; listar < 2.5 s; voto < 500 ms; ranking < 600 ms; errores < 0.1% |
+| Carga/Asíncrono | Sostenibilidad de *upload* + pipeline | ≥ 10 req/min en upload; éxito ≥ 99.5%; *transcoding* medio ≤ 30 s/job (4 workers) |
 
 ---
 
