@@ -1,6 +1,6 @@
 # Sistema-de-Videos-y-Ranking — Plan de Pruebas de Carga y Análisis de Capacidad (JMeter)
 
-> **Versión:** 1.0 — 2025-09-07  
+> **Versión:** 2.0 — 2025-09-28  
 > **Proyecto:** Sistema-de-Videos-y-Ranking 
 > **Responsable:** Equipo QA/DevOps  
 > **Documento:** `plan_de_pruebas.md`
