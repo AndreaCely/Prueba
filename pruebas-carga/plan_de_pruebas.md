@@ -149,7 +149,7 @@ flowchart TD
 
 **Etapas TG-Upload:**  
 1) **Humo** (1 usuario, 1 min).  
-2) **Carga progresiva**: 2 → 4 → 6 → 10 → 6 → 4 → 2 6usuarios concurrentes (1 - 2 min por escalón).  
+2) **Carga progresiva**: 2 → 4 → 6 → 10 → 6 → 4 → 2 usuarios concurrentes (1 - 2 min por escalón).  
 3) **Estrés**: subir hasta p95 > 1 s o error > 1%.  
 
 ---
