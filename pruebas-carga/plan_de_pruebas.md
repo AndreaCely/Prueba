@@ -17,7 +17,7 @@
 
 ## 2. Análisis de capacidad
 **Objetivo:** asegurar que la plataforma soporte: 
-- (a) **50 usuarios concurrentes** navegando y votando;
+- (a) **100 usuarios concurrentes** navegando y votando;
 - (b) picos de **10 subidas concurrentes** con procesamiento asíncrono (transcoding 30 s, 720p, 16:9, sin audio y marca de agua).
 
 **Mix horario pico (hipótesis inicial):**
@@ -41,24 +41,25 @@
 ## 4. Escenarios (etapas y duraciones)
 ### 4.1 TG‑Interactivo (login → listar → votar×3 → ranking)
 
-**Inicio sin carga:** rate(0/sec) durante 10 segundos
-**Carga inicial baja:** rate(10/sec) durante **1 minuto**
+**Inicio sin carga:** rate(0/sec) durante 10 segundos.
+
+**Carga inicial baja:** rate(10/sec) durante **1 minuto**.
 
 **Incremento moderado:**
 - Transición a rate(50/sec) en 10 segundos → Aumento de carga.
-- Mantención de rate(50/sec) durante **1 minuto**
+- Mantención de rate(50/sec) durante **1 minuto**.
 
 **Carga alta:**
-Transición a rate(100/sec) en 10 segundos → Escalamiento a carga alta.
-Mantención de rate(100/sec) durante **1 minuto** → Se evalúa el rendimiento en condiciones exigentes.
+- Transición a rate(100/sec) en 10 segundos → Escalamiento a carga alta.
+- Mantención de rate(100/sec) durante **1 minuto** → Se evalúa el rendimiento en condiciones exigentes.
 
 **Descenso progresivo:**
-Reducción a rate(50/sec) en 10 segundos → Simulando disminución de tráfico.
-Mantención de rate(50/sec) durante **1 minuto.**
+- Reducción a rate(50/sec) en 10 segundos → Simulando disminución de tráfico.
+- Mantención de rate(50/sec) durante **1 minuto.**.
 
 **Vuelta a carga baja:**
-Reducción a rate(10/sec) en 10 segundos → Se simula el final de la jornada o baja demanda.
-Mantención de rate(10/sec) durante **1 minuto**
+- Reducción a rate(10/sec) en 10 segundos → Se simula el final de la jornada o baja demanda.
+- Mantención de rate(10/sec) durante **1 minuto**.
 
 ### 4.2 TG‑Upload (login → upload multipart 30–100 MB)
 
@@ -143,7 +144,7 @@ flowchart TD
 ## 10. Estrategia y configuración de pruebas
 **Etapas TG-Interactivo:**  
 1) **Humo** (1 usuario, 1 min).  
-2) **Carga progresiva**: 10 → 50 → 10 usuarios concurrentes (1 - 2 min por escalón).  
+2) **Carga progresiva**: 10 → 50 → 100 → 50 → 10 usuarios concurrentes (1 - 2 min por escalón).  
 3) **Estrés**: subir hasta p95 > 1 s o error > 1%.
 
 **Etapas TG-Upload:**  
