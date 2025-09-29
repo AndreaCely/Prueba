@@ -11,7 +11,7 @@
 - **Repositorio:** `./capacity-planning/plan_de_pruebas.md`  
 - **Recursos de prueba:** `./jmeter/` (plan `.jmx`, CSVs de datos)  
 - **Evidencias:** `./results/{{escenario}}/` ( CSV, logs)  
-- **Notas:** ejecutar JMeter en **modo non-GUI**; documentar comandos y parámetros.
+- **Notas:** ejecutar JMeter, documentar comandos y parámetros.
 
 ---
 
