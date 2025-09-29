@@ -63,21 +63,25 @@
 
 ### 4.2 TG‑Upload (login → upload multipart 30–100 MB)
 
-**Inicio sin carga**
-- **Tasa:** rate(0/sec)
-- **Duración:** random_arrivals(10 sec)
-- **Propósito:** establecer un estado base sin solicitudes.
 
-**Incremento**
-- **Transición** a rate(10/sec) durante random_arrivals(1 min)
-- **Breve estabilización:** random_arrivals(10 sec)
-- **Pico de carga:** rate(50/sec) durante random_arrivals(2 min)
-- **Este tramo representa el momento de mayor estrés para el sistema.
+**Inicio en reposo:**
 
-**Reducción rápida de carga**
-- **Transición:** random_arrivals(10 sec)
-- **Descenso** a rate(10/sec) durante random_arrivals(1 min)
-- **Permite** observar la capacidad de recuperación del sistema tras el pico.
+- **Tasa:** rate(0/sec) 
+- **Duración:** random_arrivals(10 sec) 
+- **Objetivo**: establecer un punto de partida sin carga. 
+
+**Incremento gradual de carga:**
+
+- **Subida** a rate(2/sec) durante random_arrivals(2 min)
+- Luego a rate(4/sec) durante random_arrivals(1 min) 
+- Posteriormente a rate(6/sec) durante random_arrivals(1 min) 
+- Finalmente a rate(10/sec) durante random_arrivals(1 min) 
+
+**Descenso gradual de carga:**
+
+- **Reducción** a rate(6/sec) durante random_arrivals(1 min) 
+- Luego a rate(4/sec) durante random_arrivals(1 min) 
+- Finalmente a rate(2/sec) durante random_arrivals(2 min) 
 
 ---
 
