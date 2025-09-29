@@ -1,172 +1,150 @@
-# ANB Rising Stars Showcase — Plan de Pruebas de Carga y Análisis de Capacidad
+# ANB Rising Stars Showcase — Plan de Pruebas de Carga y Análisis de Capacidad (JMeter)
 
 > **Versión:** 1.0 — 2025-09-07  
 > **Proyecto:** ANB Rising Stars Showcase  
 > **Responsable:** Equipo QA/DevOps  
-> **Documento:** `plan_de_pruebas.md`
+> **Documento:** `plan_de_pruebas_jmeter.md`
 
 ---
 
 ## 1. Lugar y formato de entrega
 - **Repositorio:** `./capacity-planning/plan_de_pruebas.md`  
-- **Colecciones Postman:** `./collections/…` (con ejecución por `newman`)  
-- **Evidencias y artefactos:** `./capacity-planning/evidencias/` (gráficos, reportes HTML/CSV, perfiles de CPU/memoria)  
-- **Notas:** mantener estructura consistente para entregas futuras; adjuntar *readme* corto con pasos de reproducción.
-
-> Este formato sigue las directrices de la entrega del curso y consolida el análisis de capacidad, escenarios, métricas y recomendaciones.
+- **Recursos de prueba:** `./jmeter/` (plan `.jmx`, CSVs de datos, scripts `run.sh`)  
+- **Evidencias:** `./results/{{fecha}}/{{escenario}}/` (Dashboard HTML, CSV, logs)  
+- **Notas:** ejecutar JMeter en **modo non-GUI**; documentar comandos y parámetros.
 
 ---
 
 ## 2. Análisis de capacidad
-**Objetivo:** validar que la plataforma soporte de forma confiable la concurrencia de usuarios para:  
-1) flujo interactivo de autenticación, listado y votación; 2) flujo intensivo de *upload* y procesamiento asíncrono de videos (estandarización 30 s, 720p, 16:9, sin audio, marca de agua).  
-El análisis considera **latencia**, **throughput**, **utilización** (CPU, memoria, disco, I/O), **errores** y **estabilidad** bajo distintos perfiles de carga.
+**Objetivo:** asegurar que la plataforma soporte: 
+- (a) **200–300 usuarios concurrentes** navegando y votando;
+- (b) picos de **100 subidas concurrentes** con procesamiento asíncrono (transcoding 30 s, 720p, 16:9, sin audio y marca de agua).
 
-**Supuestos de tráfico (hipótesis para la primera iteración):**
-- Hora pico con picos de **200–300 usuarios concurrentes** navegando y votando.
-- Jornadas de subida masiva en ventanas cortas (p. ej., **100 jugadores** subiendo en paralelo).
-- Ratio *mix* aproximado en hora pico: 60% `GET /api/public/videos`, 20% `POST /api/public/videos/{id}/vote`, 15% `GET /api/public/rankings`, 5% autenticación.
-- *Workers* de procesamiento con cola dedicada y *backoff* de reintentos; tareas idempotentes.
+**Mix horario pico (hipótesis inicial):**
+- 60% `GET /api/public/videos`
+- 20% `POST /api/public/videos/{{id}}/vote`
+- 15% `GET /api/public/rankings`
+- 5% autenticación (`POST /api/auth/login`)
 
-**Riesgos/Cuellos de botella potenciales:**
-- **I/O de archivos** en *upload* y en *transcoding*.  
-- **CPU** en *workers* de video (ffmpeg) y en DB por validaciones de voto único.  
-- **Contención** en almacenamiento (disco local/volumen Docker) y en *broker* (Redis/RabbitMQ).  
-- **N+1/consultas costosas** en listados y rankings si no hay *caching* / vistas materializadas.
+**Riesgos/Cuellos de botella:** CPU/I/O en *workers* (ffmpeg), unicidad de voto en DB, ranking sin caché, *broker* de colas.
 
 ---
 
 ## 3. Definición de métricas
 **Capacidad de procesamiento**
-- *Throughput* (req/min o req/s) por endpoint crítico: `GET /api/public/videos`, `POST /api/public/videos/{id}/vote`, `POST /api/videos/upload`.
-- *Jobs/min* procesados por *workers* (pipeline de video).
+- *Throughput* por endpoint (req/min) y *jobs/min* en *workers*.
 
-**Tiempo de respuesta**
-- Percentiles **p50/p90/p95/p99** por endpoint (objetivo principal: **p95**).
+**Tiempos de respuesta**
+- Percentiles **p50/p90/p95/p99** por endpoint (foco en **p95**).
 
 **Utilización y salud**
-- **CPU** y **RAM** por servicio (API, *workers*, DB, broker).  
-- **I/O** (disco y red), *file descriptors*, *goroutines*, *GC* (Go).  
-- **Errores** (4xx/5xx), *timeouts*, reintentos, *dead-letter queue*.  
-- **Cola**: tamaño, *age*, *throughput*, *latency* de *broker*.
+- CPU/RAM por servicio (API, DB, broker, workers), I/O disco/red, errores 4xx/5xx, *timeouts*, *retry/DLQ*, tamaño/edad de cola.
 
 ---
 
-## 4. Respuestas a las preguntas orientadoras
-- **¿Cuál es la carga objetivo?** Soportar **200 usuarios concurrentes** con holgura y picos de **300** para lectura/voto; y **100 uploads** paralelos ocasionales.  
-- **¿Dónde está el cuello de botella?** Probable en *workers* (CPU/ffmpeg) y DB (unicidad de voto; ranking si no se cachea).  
-- **¿Qué pasa al escalar?** API y *workers* escalan horizontalmente; DB necesita índices adecuados y *pool* de conexiones; *broker* requiere *tuning*.  
-- **¿Qué degradación aceptamos?** Hasta **p95 < 500 ms** en lectura/voto a 200 CCU y **p95 < 900 ms** a 300 CCU; *upload* con **p95 < 1.2 s** (excluyendo procesamiento asíncrono).  
-- **¿Qué proteger?** Idempotencia de `vote`, *rate-limit*, *circuit breakers*, caché para `rankings`, *DLQ* y *retry* con *backoff*.
+## 4. Respuestas a preguntas orientadoras
+- **Carga objetivo:** **200 usuarios concurrentes** sostenida, picos **300 usuarios concurrentes**; **100 uploads** concurrentes por ventanas.
+- **Cuello de botella:** *workers* de vídeo y **DB** (unicidad de voto); ranking sin caché.
+- **Estrategia de escalado:** **API/workers** horizontales; **DB** con índices y *pool*; *broker tuning* (prefetch, ack).
+- **Degradación aceptable:** `p95 < 500 ms` a 200 usuarios concurrentes; `p95 < 900 ms` a 300 usuarios concurrentes; *upload* (ingestión) `p95 < 1.2 s`.
+- **Controles:** idempotencia de voto, *rate limiting*, caché de `rankings` (TTL 1–5 min), **DLQ** y *backoff* en *workers*.
 
 ---
 
 ## 5. Consideraciones importantes
-- Validar **idempotencia** en `POST /api/public/videos/{id}/vote` (una vez por usuario por video).  
-- **Caching** del ranking (TTL 1–5 min) o **vista materializada** para evitar *hot paths* en DB.  
-- *Uploads* directos a almacenamiento con *signed URLs* y *scan* de tipo/tamaño.  
-- *Workers* con **concurrencia limitada** según núcleos/CPU y *cgroups*; colas separadas para *upload* y *transcoding*.  
-- Seguridad: JWT con expiración corta; proteger endpoints privados tras *proxy* Nginx.  
-- Observabilidad desde el primer día.
+- **Voto único** por usuario/video con índice único en DB e idempotencia en el endpoint.
+- **Uploads** directos a almacenamiento (signed URLs) y validación de tipo/tamaño.
+- **Concurrencia de workers** fijada a núcleos/CPU disponibles; colas separadas para *upload* y *transcoding*.
+- **Observabilidad** desde el día 1 (métricas, logs y trazas).
 
 ---
 
-## 6. Herramienta de pruebas de carga
-**Elección:** **Locust** (Python).  
-**Justificación:**
-- Modela **flujos de usuario** (login → listar → votar) con estados y *wait times* realistas.
-- Fácil manejo de **tokens JWT**, **variables** y **parametrización** (IDs de videos, ciudades).
-- Métricas por tarea y percentiles; integración con **Prometheus** *pushgateway*.
-- Escalable: *master/workers* distribuidos para mayores volúmenes.  
-Alternativas: JMeter (GUI y ecosistema), Gatling (alto rendimiento), ab (simple, no JWT).
+## 6. Herramienta y **infraestructura requerida** (AWS Academy — Learner Lab)
+**Herramienta:** **Apache JMeter 5.6.x** en **modo non-GUI**; Dashboard HTML.
+
+**Plan de prueba (alto nivel):**
+- **Thread Groups**:  
+  - **TG-Interactivo**: login → listar → votar×3 → ranking (con *think time* 1–3 s).  
+  - **TG-Upload**: login → upload multipart (30–100 MB).
+- **Config Elements**: HTTP Defaults, Cookie/Header Managers, `CSV Data Set Config`, `User Parameters` (JWT).  
+- **Post-Processors**: `JSON Extractor` (token), `Regex/JSON Extractor` (video_id).  
+- **Timers**: `Uniform Random Timer` (1–3 s) para el escenario interactivo.  
+- **Listeners**: `Simple Data Writer` (CSV) + **Dashboard HTML** al final.  
+- **Opcional**: `Backend Listener` hacia InfluxDB/Grafana.
+
+**Instancia EC2 recomendada (cliente de carga):** **c6i.xlarge** (4 vCPU, 8 GB RAM, red 10 Gbps).  
+- **Motivos**: hasta ~500–800 hilos ligeros con *think time*; margen para TLS/JSON; ancho de banda suficiente para 100 uploads concurrentes.  
+- **JVM**: `HEAP=-Xms1g -Xmx4g`, `-XX:+UseG1GC`.  
+- **Disco (EBS gp3)**: **30 GB** (resultados CSV/HTML, artefactos de vídeo sintético y logs).  
+- **SO**: `ulimit -n >= 65535`, *sysctl* TCP, swap deshabilitada si es viable.
+- **Alternativa costo/beneficio** (si 200 usuarios concurrentes máx. y 50 uploads): **m6i.large** (2 vCPU, 8 GB, 10 Gbps).
 
 ---
 
-## 7. Entorno de pruebas
-**Restricción de la entrega:** sin nube pública.  
-**Topología recomendada (VirtualBox/VMs locales):**
-- **Generador de carga (Locust):** Ubuntu 24.04, 4 vCPU, 8 GB RAM.  
-- **Servidor aplicación (Docker Compose):** Ubuntu 24.04, 8 vCPU, 16 GB RAM.  
-  - Servicios: API (Go + Gin/Echo), Nginx (reverse proxy), Redis/RabbitMQ (broker), *workers* (ffmpeg), PostgreSQL.  
-- **Red:** puenteado entre VMs (1 Gbps virtual); latencia ~0.3–1 ms.
-
-> Para extrapolar a nube, equivalentes aproximados: *m5.large* para API y *c6i.2xlarge* para *workers*. (Sólo referencia; no usar en esta fase).
+## 7. Entorno de pruebas y topología
+- **Cliente de carga (EC2 Learner Lab)**: JMeter non-GUI dedicado.  
+- **Servidor de aplicación**: API + Nginx + DB + broker + workers (entorno de pruebas).  
+- **Red**: dentro de la misma región/zona para latencias < 2–3 ms; vigilar *throughput* en uploads.  
+- **Tiempo**: NTP habilitado para correlación de métricas.
 
 ---
 
 ## 8. Criterios de aceptación (ANB)
-- **Voto:** `POST /api/public/videos/{id}/vote` → **p95 < 300 ms**, tasa de error < 0.1%.  
-- **Listado público:** `GET /api/public/videos` → **p95 < 350 ms** a 300 CCU.  
-- **Ranking:** `GET /api/public/rankings` → **p95 < 400 ms** con caché activa.  
-- **Upload:** `POST /api/videos/upload` → **≥ 50 req/min** sostenidos; **p95 < 1.2 s** (solo ingestión).  
-- **Utilización servidor app:** CPU **< 80%** sostenida a **200 CCU**.  
-- **Workers de video:** tiempo medio de *transcoding* **≤ 30 s** por clip (30 s a 720p) con 4 *workers* paralelos.  
-- **Integridad de voto único:** 0 violaciones en pruebas masivas.
+- `POST /api/public/videos/{{id}}/vote` → **p95 < 300 ms**, error < 0.1%.  
+- `GET /api/public/videos` → **p95 < 350 ms** a 300 usuarios concurrentes.  
+- `GET /api/public/rankings` → **p95 < 400 ms**.  
+- `POST /api/videos/upload` → **≥ 50 req/min** sostenidos; **p95 < 1.2 s** (ingestión).  
+- **Servidor app CPU** < 80% a 200 usuarios concurrentes; **workers** con *transcoding* medio ≤ 30 s/clip (720p/30s).  
+- **Integridad de voto único**: 0 violaciones en campañas masivas.
 
 ---
 
 ## 9. Escenarios de prueba (rutas críticas)
 
-### Escenario 1 — Interactivo/Web (login → explorar → votar)
-**Objetivo:** validar UX y latencias en navegación pública y voto único.
-**Flujo:**
-1. `POST /api/auth/login` (JWT)  
-2. `GET /api/public/videos?limit=…`  
-3. Seleccionar **3 videos distintos** aleatorios.  
-4. `POST /api/public/videos/{id}/vote` ×3 (una vez por cada video).  
-5. `GET /api/public/rankings?city={ciudad}`  
+### Escenario 1 — Interactivo/Web
+**Objetivo:** validar latencia y unicidad de voto con navegación realista.  
+**Flujo:** login → listar → votar×3 → ranking.
 
 ```mermaid
 flowchart TD
-  A[Login (POST /auth/login)] --> B[Listar públicos (GET /public/videos)]
-  B --> C[Votar Video 1 (POST /public/videos/<built-in function id>/vote)]
-  C --> D[Votar Video 2]
-  D --> E[Votar Video 3]
-  E --> F[Ranking por ciudad (GET /public/rankings?city=…)]
+  A["POST /api/auth/login"] --> B["GET /api/public/videos"]
+  B --> C["POST /api/public/videos/:id/vote (1)"] 
+  C --> D["POST /api/public/videos/:id/vote (2)"]
+  D --> E["POST /api/public/videos/:id/vote (3)"]
+  E --> F["GET /api/public/rankings?city=..."]
 ```
 
-**Validaciones:** códigos 200, unicidad de voto, p95 por paso, *think time* 1–3 s.
+**Validaciones:** 2xx, unicidad de voto (409/422 si reintento), p95 por paso, *think time* 1–3 s.
 
 ---
 
-### Escenario 2 — Carga/Asíncrono (subidas concurrentes)
-**Objetivo:** someter *upload* y *pipeline* asíncrono a concurrencia alta.
-**Flujo:**
-1. `POST /api/auth/login` por cada jugador.  
-2. `POST /api/videos/upload` (20–60 s, ≤100 MB).  
-3. Verificar respuesta 201 y `task_id`.  
-4. *Opcional:* *polling* con `GET /api/videos/{video_id}` (hasta *status* `processed`).
+### Escenario 2 — Carga/Asíncrono (Uploads)
+**Objetivo:** someter ingestión y pipeline asíncrono a concurrencia alta.  
+**Flujo:** login → upload multipart → *polling* opcional hasta `processed`.
 
 ```mermaid
 flowchart TD
-  A[Login por jugador] --> B[Upload de video (POST /videos/upload)]
-  B --> C[Tarea en cola (broker)]
-  C --> D[Worker procesa (ffmpeg)]
-  D --> E[Status=processed y URL disponible]
+  A["POST /api/auth/login (jugador)"] --> B["POST /api/videos/upload (multipart 30-100 MB)"]
+  B --> C["Broker encola tarea"]
+  C --> D["Worker ffmpeg procesa 720p/30s + watermark"]
+  D --> E["GET /api/videos/:video_id (status = processed)"]
 ```
 
-**Carga:** **100 jugadores** subiendo en paralelo; repetir en lotes.  
-**Validaciones:** tasa de éxito ≥ 99.5%, latencias de ingestión, *queue depth*, tiempos de *transcoding*.
+**Carga:** 100 jugadores subiendo en paralelo (en lotes).  
+**Validaciones:** éxito ≥ 99.5%, latencias de ingestión, tamaño/edad de cola, tiempo medio de *transcoding*.
 
 ---
 
 ## 10. Estrategia y configuración de pruebas
 **Etapas:**  
-1. **Humo (5–10 usuarios, 5 min):** validar scripts, datos y *smoke* de endpoints.  
-2. **Carga progresiva (ramp-up):** 10 → 50 → 100 → 200 → **300 CCU**, 10–15 min por escalón.  
-3. **Estrés:** incrementar hasta que **p95 > 1 s** o errores > 1%; registrar punto de inflexión.  
-4. **Soak (estabilidad, 60–120 min a 200 CCU):** detectar *leaks* y degradación.  
+1) **Humo** (5–10 usuarios, 5 min).  
+2) **Carga progresiva**: 10 → 50 → 100 → 200 → 300 usuarios concurrentes (10–15 min por escalón).  
+3) **Estrés**: subir hasta p95 > 1 s o error > 1%.  
+4) **Soak**: 60–120 min a 200 usuarios concurrentes (filtrar *warm-up* en análisis).
 
-**Parámetros de configuración (Locust):**
-- `spawn_rate`: proporcional al escalón (p. ej., 10 usuarios/s al inicio).  
-- *Think time* 1–3 s en escenario interactivo; sin *think time* en *upload* (para *worst case*).  
-- Datos: *fixtures* de usuarios y catálogo de videos/ciudades (CSV/JSON).
+**Configuración JMeter:** non-GUI; `HEAP 1–4 GB`; sin listeners en vivo; `Simple Data Writer` a CSV; **Dashboard HTML** al final; `CSV Data Set` para credenciales/IDs; `Throughput Controller` si se ejecutan TG combinados; `Backend Listener` opcional.
 
-**Monitoreo y *profiling*:**  
-- **Grafana + Prometheus** (node_exporter, postgres_exporter, redis_exporter).  
-- **cAdvisor** para contenedores; **Asynq/worker dashboard**.  
-- *Logs* centralizados (Loki/ELK).  
-- *pprof* en API Go (CPU/mem/perf), *pg_stat_statements* en PostgreSQL.
+**Monitoreo y profiling:** Grafana/Prometheus (node_exporter, postgres_exporter, redis_exporter, cadvisor), logs centralizados (Loki/ELK), pprof/APM si está disponible.
 
 ---
 
@@ -174,24 +152,14 @@ flowchart TD
 
 | Escenario | Objetivo | Resultado esperado |
 |---|---|---|
-| Interactivo/Web | Latencia y unicidad de voto con 200–300 CCU | p95: login < 250 ms; listar < 350 ms; voto < 300 ms; ranking < 400 ms; errores < 0.1% |
-| Carga/Asíncrono | Sostenibilidad de *upload* + *pipeline* | ≥ 50 req/min en *upload*; éxito ≥ 99.5%; *transcoding* medio ≤ 30 s/job con 4 *workers* |
+| Interactivo/Web | Latencia y unicidad de voto con 200–300 usuarios concurrentes | p95: login < 250 ms; listar < 350 ms; voto < 300 ms; ranking < 400 ms; errores < 0.1% |
+| Carga/Asíncrono | Sostenibilidad de *upload* + pipeline | ≥ 50 req/min en upload; éxito ≥ 99.5%; *transcoding* medio ≤ 30 s/job (4 workers) |
 
 ---
 
-## 12. Ejemplos de gráficos (resultados preliminares **simulados**)
-
+## 12. Gráficos simulados
 **Throughput vs. Usuarios**  
-![Throughput vs Usuarios](/mnt/data/throughput_vs_users.png)
+![Throughput vs Usuarios](jmeter_throughput_vs_users.png)
 
 **Tiempo de Respuesta p95 vs. Carga**  
-![p95 vs Carga](/mnt/data/tiempo_respuesta_vs_carga.png)
-
----
-
-## 13. Anexos
-- *Especificación funcional del proyecto, endpoints y restricciones de infraestructura de la entrega.*
-- *Colecciones de Postman y scripts de Locust (workload mix y escenarios).*
-
-**Notas finales:** Este plan será iterado con resultados reales para refinar límites de capacidad, ajustar índices y *pooling*, y dimensionar *workers* de video y almacenamiento.
-
+![p95 vs Carga](jmeter_tiempo_respuesta_vs_carga.png)
