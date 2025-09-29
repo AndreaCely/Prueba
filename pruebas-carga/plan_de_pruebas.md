@@ -126,7 +126,7 @@ flowchart TD
 
 ### Escenario 2 — Carga/Asíncrono (Uploads)
 **Objetivo:** someter ingestión y pipeline asíncrono a concurrencia alta.  
-**Flujo:** login → upload multipart → *polling* opcional hasta `processed`.
+**Flujo:** login → upload multipart
 
 ```mermaid
 flowchart TD
