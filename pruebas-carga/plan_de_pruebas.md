@@ -40,21 +40,25 @@
 
 ## 4. Escenarios (etapas y duraciones)
 ### 4.1 TG‑Interactivo (login → listar → votar×3 → ranking)
-**Inicio en reposo:**
-- **Tasa:** rate(0/sec)
-- **Duración:** random_arrivals(10 sec)
-- **Objetivo:** establecer un punto de partida sin carga.
 
-**Incremento gradual de carga:**
-- **Subida** a rate(2/sec) durante random_arrivals(2 min)
-- **Luego** a rate(4/sec) durante random_arrivals(1 min)
-- **Posteriormente** a rate(6/sec) durante random_arrivals(1 min)
-- **Finalmente** a rate(10/sec) durante random_arrivals(1 min)
+**Inicio sin carga:** rate(0/sec) durante 10 segundos
+**Carga inicial baja:** rate(10/sec) durante **1 minuto**
 
-**Descenso gradual de carga:**
-- **Reducción** a rate(6/sec) durante random_arrivals(1 min)
-- **Luego** a rate(4/sec) durante random_arrivals(1 min)
-- **Finalmente** a rate(2/sec) durante random_arrivals(2 min)
+**Incremento moderado:**
+- Transición a rate(50/sec) en 10 segundos → Aumento de carga.
+- Mantención de rate(50/sec) durante **1 minuto**
+
+**Carga alta:**
+Transición a rate(100/sec) en 10 segundos → Escalamiento a carga alta.
+Mantención de rate(100/sec) durante **1 minuto** → Se evalúa el rendimiento en condiciones exigentes.
+
+**Descenso progresivo:**
+Reducción a rate(50/sec) en 10 segundos → Simulando disminución de tráfico.
+Mantención de rate(50/sec) durante **1 minuto.**
+
+**Vuelta a carga baja:**
+Reducción a rate(10/sec) en 10 segundos → Se simula el final de la jornada o baja demanda.
+Mantención de rate(10/sec) durante **1 minuto**
 
 ### 4.2 TG‑Upload (login → upload multipart 30–100 MB)
 
