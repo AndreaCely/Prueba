@@ -12,14 +12,6 @@
 - Andrea Carolina Cely Duarte — a.celyd@uniandes.edu.co
 - Juan Carlos Martinez Muñoz — jc.martinezm1@uniandes.edu.co
 
-> **Estructura del repo**
-> ```text
-> /
-> ├─ README.md             # Este archivo
-> └─ /images               # Coloca aquí las figuras (PNG/JPG/SVG)
->    └─ .gitkeep           # Mantiene la carpeta en Git
-> ```
-
 ---
 
 ## Contenido
@@ -227,9 +219,3 @@ Para una **versión 2** capaz de atender cientos de usuarios concurrentes:
 ## 8. Conclusión
 El sistema no sostiene las cargas objetivo definidas. Las pruebas de humo confirmaron funcionalidad básica, pero la carga escalonada evidenció tiempos de respuesta > **30 s** e incluso **minutos**. Para alcanzar los criterios de aceptación se requiere dimensionamiento adecuado, optimización de base de datos y mecanismos de **escalado automático**, además de **monitoreo** de consumo de CPU/RAM por componente.
 
----
-
-> **Cómo usar la carpeta /images**
-> 1) Exporta cada figura a PNG/JPG/SVG.
-> 2) Nombra los archivos siguiendo los nombres sugeridos arriba (p. ej., `figura05_throughput_vs_latencia_interactivo.png`).
-> 3) Súbelos a `/images`. GitHub resolverá los enlaces automáticamente por ruta relativa.
