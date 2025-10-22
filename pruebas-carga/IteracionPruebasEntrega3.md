@@ -47,6 +47,8 @@ En esta iteración se implementó un **modelo escalable con balanceador ELB**, *
 
 Comparado con la **Entrega 2**, el backend pasó de una instancia única a tres instancias bajo **balanceo de carga (ELB)**, habilitando escalabilidad horizontal supervisada mediante **CloudWatch**.
 
+**Instancias**  
+![Instancias](images/figura02_Instancias_v3.png "Instancias")
 ---
 
 ## 2. Rutas críticas
@@ -84,8 +86,11 @@ Patrón de carga:
 `rate(10/sec) random_arrivals(10 s) rate(50/sec)` → pausa 4 min →  
 `rate(50/sec) random_arrivals(10 s) rate(10/sec)` → pausa 2 min.  
 
+![Prueba Escalonada TG‑Interactivo](images/figura02_GraficaPruebasInteractivo_v3.png "Prueba Escalonada TG‑Interactivo")
+
 ### 3.2. Prueba Escalonada TG‑Upload
 Patrón de carga con picos controlados hasta `rate(10/sec)` y descensos progresivos.  
+![Prueba Escalonada TG‑Upload](images/figura02_GraficaPruebasUpload_v3.png "Prueba Escalonada TG‑Upload")
 
 **Figura 3. Escenario de carga flujo Interactivo**  
 ![Figura 3 — Escalado Carga Interactivo](images/figura03_carga_interactivo_v3.png "Figura 3. Escenario de carga flujo Interactivo")
