@@ -1,4 +1,4 @@
-# Análisis Pruebas de Carga — Iteración 3
+# Análisis Pruebas de Carga — Entrega 3
 
 **Proyecto:** Entrega 3 — Escalabilidad en la Capa Web  
 **Documento:** IteracionPruebasEntrega3.md  
@@ -17,8 +17,8 @@
 ---
 
 ## Introducción
-Este informe documenta la **tercera iteración** de pruebas de carga y escalabilidad del sistema **Video Ranking** desplegado sobre AWS.  
-A diferencia de la Iteración 2, en esta fase se aplicaron **estrategias de escalado horizontal**, **balanceo de carga** y **migración de almacenamiento a S3**, con el objetivo de validar la capacidad del sistema para manejar tráfico concurrente en condiciones controladas de autoescalado y monitoreo.
+Este informe documenta la **tercera entrega** de pruebas de carga y escalabilidad del sistema **Video Ranking** desplegado sobre AWS.  
+A diferencia de la anterior iteración, en esta fase se aplicaron **estrategias de escalado horizontal**, **balanceo de carga** y **migración de almacenamiento a S3**, con el objetivo de validar la capacidad del sistema para manejar tráfico concurrente en condiciones controladas de autoescalado y monitoreo.
 
 Las pruebas se realizaron sobre los flujos **TG‑Interactivo** (login → listar → votar×3 → ranking) y **TG‑Upload** (login → upload multipart 30–100 MB), repitiendo el enfoque metodológico de la iteración anterior, pero en una infraestructura ampliada y balanceada.
 
@@ -28,7 +28,7 @@ Las pruebas se realizaron sobre los flujos **TG‑Interactivo** (login → lista
 
 ### 1.1. Infraestructura del Generador de Carga
 - **Equipo:** Intel i7‑12700H, 16 GB RAM, Windows 11 Pro 22H2.  
-- **Cliente de carga:** JMeter 5.6.3 — mismo entorno de ejecución que Iteración 2.
+- **Cliente de carga:** JMeter 5.6.3 — mismo entorno de ejecución que Entrega 2.
 
 ### 1.2. Infraestructura de la solución (AWS)
 En esta iteración se implementó un **modelo escalable con balanceador ELB**, **autoscaling** y almacenamiento **S3**.
@@ -45,7 +45,7 @@ En esta iteración se implementó un **modelo escalable con balanceador ELB**, *
 | Worker | t3.small | Procesamiento base |
 | Worker AE × 2 | t3.small | Workers adicionales para cargas concurrentes |
 
-Comparado con la **Iteración 2**, el backend pasó de una instancia única a tres instancias bajo **balanceo de carga (ELB)**, habilitando escalabilidad horizontal supervisada mediante **CloudWatch**.
+Comparado con la **Entrega 2**, el backend pasó de una instancia única a tres instancias bajo **balanceo de carga (ELB)**, habilitando escalabilidad horizontal supervisada mediante **CloudWatch**.
 
 ---
 
@@ -64,7 +64,7 @@ flowchart TD
 ```
 
 ### 2.2. Escenario Carga/Asíncrono (Uploads)
-Proceso de carga multipart de videos grandes (30 – 100 MB).
+Proceso de carga multipart de videos grandes (12 – 52 MB).
 
 ```mermaid
 flowchart TD
@@ -159,11 +159,11 @@ Patrón de carga con picos controlados hasta `rate(10/sec)` y descensos progresi
 
 ---
 
-## 6. Comparación Iteración 2 vs Iteración 3
+## 6. Comparación Entrega 2 vs Entrega 3
 
 **Tabla 7. Comparativa de métricas globales (p95 y tasa de éxito promedio)**
 
-| Flujo | Iteración 2 p95 (ms) | Iteración 3 p95 (ms) | Δ % Mejora | Éxito Iter. 2 (%) | Éxito Iter. 3 (%) | Δ % Éxito |
+| Flujo | Entrega 2 p95 (ms) | Entrega 3 p95 (ms) | Δ % Mejora | Éxito Entrega. 2 (%) | Éxito Entrega. 3 (%) | Δ % Éxito |
 |--------|----------------------:|----------------------:|-------------:|------------------:|------------------:|------------:|
 | TG‑Interactivo | ~43000 | ~28000 | ▲ 34.9 % | 23 | 43 | ▲ 87 % |
 | TG‑Upload | ~312000 | ~245000 | ▲ 21.5 % | 1.6 | 3.4 | ▲ 112 % |
@@ -177,7 +177,7 @@ Patrón de carga con picos controlados hasta `rate(10/sec)` y descensos progresi
 1. **Escalabilidad efectiva:** la infraestructura distribuida en múltiples instancias permitió absorber picos de carga hasta 50 req/s sin fallas críticas.  
 2. **Balanceador de carga (ELB):** distribuyó el tráfico entre backends AE, reduciendo p95 ≈ 35 %.  
 3. **S3 y pipeline asíncrono:** la carga de videos se mantuvo estable, aunque la latencia sigue alta (> 200 s en p95).  
-4. **Autoscaling:** las políticas de CloudWatch dispararon la creación de instancias con un promedio de CPU > 70 %, estabilizando throughput.  
+4. **Autoscaling:** las políticas dispararon la creación de instancias con un promedio de CPU > 30 %, estabilizando throughput.  
 5. **Persisten cuellos de botella** en la base RDS y en el worker principal bajo alto tráfico concurrente.
 
 ---
@@ -194,7 +194,7 @@ Patrón de carga con picos controlados hasta `rate(10/sec)` y descensos progresi
 
 ## 9. Conclusión
 La Iteración 3 demuestra una **mejor capacidad de respuesta y estabilidad** del sistema al incorporar mecanismos de **escalado horizontal y balanceo de carga**.  
-Aunque la latencia del flujo Upload continúa elevada, el desempeño global evidencia un progreso significativo frente a la Iteración 2, cumpliendo parcialmente los objetivos de escalabilidad y disponibilidad definidos para la Entrega 3.
+Aunque la latencia del flujo Upload continúa elevada, el desempeño global evidencia un progreso significativo frente a la Entrega 2, cumpliendo parcialmente los objetivos de escalabilidad y disponibilidad definidos para la Entrega 3.
 
 **Figura 8. Arquitectura escalable desplegada en AWS**  
 ![Figura 8 — Arquitectura escalable en AWS](images/figura08_arquitectura_aws_v3.png "Figura 8. Arquitectura escalable en AWS")
