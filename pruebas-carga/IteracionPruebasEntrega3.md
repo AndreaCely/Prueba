@@ -150,6 +150,12 @@ Patrón de carga con picos controlados hasta `rate(10/sec)` y descensos progresi
 **Figura 6. Throughput vs Latencia (Interactivo)**  
 ![Figura 6 — Throughput vs Latencia (Interactivo)](images/figura06_throughput_vs_latencia_interactivo_v3.png "Figura 6. Throughput vs Latencia Interactivo")
 
+
+**Comportamiento durante la Prueba de carga Escalonada – TG‑Interactivo**
+![Comportamiento durante la Prueba de carga Escalonada – TG‑Interactivo](images/figura06_comportamientoFlujoInteractivoDurante_v3.png "Comportamiento durante la Prueba de carga Escalonada – TG‑Interactivo")
+
+**Comportamiento finalizada la Prueba de carga Escalonada – TG‑Interactivo**
+![Comportamiento finalizada la Prueba de carga Escalonada – TG‑Interactivo](images/figura06_comportamientoFlujoInteractivoFin_v3.png "Comportamiento finalizada la Prueba de carga Escalonada – TG‑Interactivo")
 ---
 
 ### 5.3. Pruebas de carga Escalonada – TG‑Upload
@@ -161,6 +167,15 @@ Patrón de carga con picos controlados hasta `rate(10/sec)` y descensos progresi
 
 **Figura 7. Throughput vs Latencia (Upload)**  
 ![Figura 7 — Throughput vs Latencia (Upload)](images/figura07_throughput_vs_latencia_upload_v3.png "Figura 7. Throughput vs Latencia Upload")
+
+**Comportamiento durante la Prueba de carga Escalonada – TG‑Upload**
+![Comportamiento durante la Prueba de carga Escalonada – TG‑Upload](images/figura07_comportamientoFlujoUploadDurante_v3.png "Comportamiento durante la Prueba de carga Escalonada – TG‑Upload")
+
+**Logs Workers Prueba de carga Escalonada – TG‑Upload**
+![Logs Workers Prueba de carga Escalonada – TG‑Upload](images/figura07_logsWorkers_v3.png "Logs Workers Prueba de carga Escalonada – TG‑Upload")
+
+**Buckets Prueba de carga Escalonada – TG‑Upload**
+![Buckets Prueba de carga Escalonada – TG‑Upload](images/figura07_buckets_v3.png "Buckets Prueba de carga Escalonada – TG‑Upload")
 
 ---
 
