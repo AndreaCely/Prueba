@@ -182,7 +182,7 @@ Patrón de carga con picos controlados hasta `rate(10/sec)` y descensos progresi
 1. **Escalabilidad efectiva:** la infraestructura distribuida en múltiples instancias permitió absorber picos de carga hasta 50 req/s sin fallas críticas.  
 2. **Balanceador de carga (ELB):** distribuyó el tráfico entre backends AE, reduciendo p95 ≈ 35 %.  
 3. **S3 y pipeline asíncrono:** la carga de videos se mantuvo estable, aunque la latencia sigue alta (> 200 s en p95).  
-4. **Autoscaling:** las políticas dispararon la creación de instancias con un promedio de CPU > 30 %, estabilizando throughput.  
+4. **Autoscaling:** las políticas dispararon la creación de instancias con un promedio de CPU > 18 %, estabilizando throughput.  
 5. **Persisten cuellos de botella** en la base RDS y en el worker principal bajo alto tráfico concurrente.
 
 ---
