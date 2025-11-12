@@ -31,7 +31,7 @@ En esta iteración se abordaron nuevos objetivos orientados a la escalabilidad y
 1. **Consideraciones técnicas para escalar en IaaS público:** se reemplazó el despliegue fijo de instancias EC2 por un **cluster EKS** con tres nodos worker.  EKS integra políticas de autoscaling de nodos y pods; el *Cluster Autoscaler* observa los pods no programados y añade o elimina nodos según sea necesario.
 2. **Estrategia de despliegue y arranque sin intervención manual:** se configuraron *manifests* de Kubernetes para la API, el frontend y los workers.  Estas definiciones permiten escalar réplicas bajo demanda mediante *Horizontal Pod Autoscaler* (HPA) y reiniciar pods automáticamente tras fallos.
 3. **Autoscaling de servidores web:** el *HPA* supervisa métricas de CPU y memoria de los pods de backend y frontend y ajusta el número de réplicas.  El *Cluster Autoscaler* amplía los nodos cuando las réplicas no caben en los nodos actuales.
-4. **Autoscaling de procesos batch:** los trabajadores (pods de workers) escalan horizontalmente en función de la longitud de la cola y del uso de CPU.  Cuando el clúster detecta pods pendientes, añade nodos nuevos; cuando la cola se vacía, reduce la capacidad.
+4. **Autoscaling de procesos batch:** los pods de workers escalan horizontalmente en función de la longitud de la cola y del uso de CPU.  Cuando el clúster detecta pods pendientes, añade nodos nuevos; cuando la cola se vacía, reduce la capacidad.
 5. **Balanceador de carga:** un load balancer expone el servicio web y distribuye el tráfico entre los pods.  El algoritmo de balanceo asigna las peticiones a los pods con menos conexiones activas, distribuyendo las solicitudes de forma adaptativa.
 6. **Sistema escalable de paso de mensajes:** se sustituyó RabbitMQ por **Amazon SQS**.  SQS permite desacoplar productores y consumidores; actúa como una cola en la que las aplicaciones envían mensajes sin depender de la disponibilidad del consumidor y garantiza la entrega hasta que el receptor procesa el mensaje.
 7. **Ejecutar pruebas de estrés en servidores web y procesos batch:** se diseñaron pruebas escalonadas para los flujos interactivo y de carga, evaluando el comportamiento del sistema en picos controlados de hasta 50 req/s en el web y 10 uploads/s en el pipeline asíncrono.
@@ -105,13 +105,13 @@ flowchart TD
 
 El patrón de carga se mantuvo respecto a la entrega anterior: se generan picos de tráfico con periodos de rampa y pausas intermedias.  Se simulan tres fases: 10 req/s → 50 req/s → 10 req/s, con pausas de 2, 4 y 2 minutos, respectivamente.  La figura siguiente muestra el throughput, la latencia p95 y la tasa de éxito a lo largo de la prueba escalonada para el flujo interactivo.
 
-![Comportamiento Prueba de Carga – TG‑Interactivo]({{file-WNP5fcFqWunQndbKSNtm2n}})
+![Comportamiento Prueba de Carga – TG‑Interactivo](images/fig_carga_interactivo_timeseries.png)
 
 ### 3.2 Prueba escalonada TG‑Upload
 
 Para el flujo de carga se aplicó un patrón escalonado con usuarios concurrentes: 2 → 4 → 6 → 10 → 6 → 4 → 2.  La figura muestra la evolución del throughput, la latencia p95 y la tasa de éxito en el pipeline asíncrono.
 
-![Comportamiento Prueba de Carga – TG‑Upload]({{file-Y5xDcpNXBP7XmSrEQyKnqB}})
+![Comportamiento Prueba de Carga – TG‑Upload](images/fig_carga_upload_timeseries.png)
 
 ---
 
@@ -159,9 +159,9 @@ Para el flujo Upload (humo) se obtuvieron los siguientes valores:
 
 En ambas rutas el throughput fue bajo (≈ 0.1 req/s por operación), de modo que se cumplieron las métricas objetivo.  La figura siguiente muestra la relación entre throughput y latencia p95 para cada operación de humo.
 
-![Throughput vs Latencia — Humo Interactivo]({{file-MjoKXxewhBjXpkTFPtBg6v}})
+![Throughput vs Latencia — Humo Interactivo](images/fig_humo_interactivo_throughput_vs_latency.png)
 
-![Throughput vs Latencia — Humo Upload]({{file-AmRjzrgcGUxmsF9e62BtLn}})
+![Throughput vs Latencia — Humo Upload](images/fig_humo_upload_throughput_vs_latency.png)
 
 ### 5.2 Pruebas de carga escalonada – TG‑Interactivo
 
@@ -180,9 +180,9 @@ El p95 global del flujo interactivo fue de ~69.6 s con una tasa de éxito del 1
 
 El siguiente gráfico muestra el throughput (req/s), la latencia p95 y el porcentaje de éxito a lo largo del tiempo para la prueba escalonada:
 
-![Throughput vs Latencia — Carga Interactivo]({{file-7A4wfD7g3qi2gB875xWA7q}})
+![Throughput vs Latencia — Carga Interactivo](images/fig_carga_interactivo_throughput_vs_latency.png)
 
-![Evolución Carga – TG‑Interactivo]({{file-WNP5fcFqWunQndbKSNtm2n}})
+![Evolución Carga – TG‑Interactivo](images/fig_carga_interactivo_timeseries.png)
 
 ### 5.3 Pruebas de carga escalonada – TG‑Upload
 
@@ -195,9 +195,9 @@ El pipeline asíncrono evidenció mejoras significativas en comparación con la 
 
 El p95 global del flujo de upload se redujo a ~151.7 s y la tasa de éxito aumentó hasta 35.9 %.  El gráfico siguiente muestra la evolución del throughput, la latencia p95 y el porcentaje de éxito durante la prueba:
 
-![Throughput vs Latencia — Carga Upload]({{file-17L6CiPZuRg4TLKowQ3jLa}})
+![Throughput vs Latencia — Carga Upload](images/fig_carga_upload_throughput_vs_latency.png)
 
-![Evolución Carga – TG‑Upload]({{file-Y5xDcpNXBP7XmSrEQyKnqB}})
+![Evolución Carga – TG‑Upload](images/fig_carga_upload_timeseries.png)
 
 ---
 
