@@ -54,7 +54,7 @@ Las pruebas se ejecutaron desde un equipo con las siguientes características:
 
 La arquitectura de esta entrega abandona las instancias EC2 individuales y adopta un **cluster Amazon EKS** con autoscaling.  La figura siguiente resume la composición lógica del sistema desplegado:
 
-![Arquitectura EKS, autoscaling y colas]({{file-J4Ti7pXfWU1ZP8kTBUbgJ4}})
+![Arquitectura EKS, autoscaling y colas](images/fig_arquitectura.png)
 
 **Tabla 1. Infraestructura de la solución**
 
